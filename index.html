@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Basic Secure Chat</title>
+<title>Whisper — Private 2-Person Chat</title>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#f2f2f2;display:flex;align-items:center;justify-content:center;height:100vh}
+body{
+  margin:0;font-family:sans-serif;background:#f2f2f2;
+  display:flex;align-items:center;justify-content:center;height:100vh;
+}
 #pinBox,#chatBox{
   width:90%;max-width:400px;background:#fff;padding:20px;
-  border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)
+  border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);
 }
 #chatBox{display:none}
 input,button{
@@ -17,11 +20,11 @@ input,button{
 }
 button{border:none;background:#008069;color:#fff;font-weight:600}
 #messages{
-  height:300px;overflow:auto;border:1px solid #ddd;padding:10px;margin:10px 0;border-radius:6px;
-  background:#fafafa
+  height:300px;overflow:auto;border:1px solid #ddd;padding:10px;margin:10px 0;
+  border-radius:6px;background:#fafafa;
 }
-.msg-me{text-align:right;margin:4px;color:#008069;font-weight:600}
-.msg-peer{text-align:left;margin:4px;color:#444;font-weight:600}
+.msg-me{text-align:right;margin:6px;color:#008069;font-weight:600}
+.msg-peer{text-align:left;margin:6px;color:#333;font-weight:600}
 #status{text-align:center;margin-top:8px;font-size:14px;font-weight:600}
 </style>
 
@@ -30,7 +33,7 @@ button{border:none;background:#008069;color:#fff;font-weight:600}
 
 <!-- PIN SCREEN -->
 <div id="pinBox">
-  <h3>Enter PIN</h3>
+  <h3>Whisper — Enter PIN</h3>
   <input id="pinInput" placeholder="1234">
   <button onclick="joinChat()">Start Chat</button>
   <div id="status">Waiting…</div>
@@ -38,7 +41,7 @@ button{border:none;background:#008069;color:#fff;font-weight:600}
 
 <!-- CHAT SCREEN -->
 <div id="chatBox">
-  <h3>Chat</h3>
+  <h3>Whisper</h3>
   <div id="status"></div>
   <div id="messages"></div>
   <input id="msgInput" placeholder="Type message">
@@ -46,19 +49,18 @@ button{border:none;background:#008069;color:#fff;font-weight:600}
 </div>
 
 <script>
-/* NEW RELIABLE SIGNAL SERVER */
+/* NEW BEST SIGNAL SERVER */
 const SIGNAL_URL = "wss://onlyus-signal.onrender.com";
 
 let ws, pc, dc, myPin;
 
-/* Update status */
+/* Status update */
 function setStatus(t,c="#008069"){
   const s=document.getElementById("status");
-  s.textContent=t;
-  s.style.color=c;
+  s.textContent=t; s.style.color=c;
 }
 
-/* Start */
+/* Join with PIN */
 function joinChat(){
   myPin = document.getElementById("pinInput").value.trim();
   if(!myPin) return alert("Enter PIN");
@@ -74,13 +76,12 @@ function joinChat(){
   ws.onclose = ()=> setStatus("Signal Closed ❌","red");
 
   ws.onmessage = async ev=>{
-    let data = JSON.parse(ev.data);
+    const data = JSON.parse(ev.data);
 
     if(data.type==="match"){
       setStatus("Peer Found — Connecting…","#444");
       startRTC(true);
     }
-
     if(data.type==="offer"){
       await startRTC(false);
       await pc.setRemoteDescription(data.sdp);
@@ -88,18 +89,16 @@ function joinChat(){
       await pc.setLocalDescription(ans);
       ws.send(JSON.stringify({type:"answer",pin:myPin,sdp:pc.localDescription}));
     }
-
     if(data.type==="answer"){
       await pc.setRemoteDescription(data.sdp);
     }
-
     if(data.type==="ice"){
       try{ await pc.addIceCandidate(data.candidate); }catch{}
     }
   };
 }
 
-/* WebRTC P2P Setup */
+/* WebRTC Connection */
 async function startRTC(initiator){
   document.getElementById("pinBox").style.display="none";
   document.getElementById("chatBox").style.display="block";
@@ -146,21 +145,20 @@ async function startRTC(initiator){
   }
 }
 
-/* DataChannel Setup */
+/* Data Channel Ready */
 function setupDC(){
   dc.onopen = ()=> setStatus("Chat Ready ✔","green");
   dc.onclose = ()=> setStatus("Chat Closed ❌","red");
-
   dc.onmessage = e=> addMsg(e.data,"peer");
 }
 
-/* Send Message */
+/* Send text */
 function sendMsg(){
   const txt=document.getElementById("msgInput").value.trim();
   if(!txt) return;
 
   addMsg(txt,"me");
-  dc.send(txt);
+  if(dc && dc.readyState==="open") dc.send(txt);
 
   document.getElementById("msgInput").value="";
 }
