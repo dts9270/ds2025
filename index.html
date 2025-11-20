@@ -32,7 +32,7 @@ button{border:none;background:#008069;color:#fff;font-weight:600}
 <div id="pinBox">
   <h3>Enter PIN</h3>
   <input id="pinInput" placeholder="1234">
-  <button onclick="join()">Start Chat</button>
+  <button onclick="joinChat()">Start Chat</button>
   <div id="status">Waiting…</div>
 </div>
 
@@ -46,21 +46,22 @@ button{border:none;background:#008069;color:#fff;font-weight:600}
 </div>
 
 <script>
-/* BASIC CONFIG */
-const SIGNAL_URL = "wss://free-signalling-chat.vercel.app/basic";
+/* NEW RELIABLE SIGNAL SERVER */
+const SIGNAL_URL = "wss://onlyus-signal.onrender.com";
+
 let ws, pc, dc, myPin;
 
-/* Update status text */
+/* Update status */
 function setStatus(t,c="#008069"){
   const s=document.getElementById("status");
   s.textContent=t;
   s.style.color=c;
 }
 
-/* Join with PIN */
-function join(){
+/* Start */
+function joinChat(){
   myPin = document.getElementById("pinInput").value.trim();
-  if(!myPin) return alert("Enter PIN!");
+  if(!myPin) return alert("Enter PIN");
 
   ws = new WebSocket(SIGNAL_URL);
 
@@ -72,8 +73,8 @@ function join(){
   ws.onerror = ()=> setStatus("Signal Error ❌","red");
   ws.onclose = ()=> setStatus("Signal Closed ❌","red");
 
-  ws.onmessage = async (ev)=>{
-    const data = JSON.parse(ev.data);
+  ws.onmessage = async ev=>{
+    let data = JSON.parse(ev.data);
 
     if(data.type==="match"){
       setStatus("Peer Found — Connecting…","#444");
@@ -98,7 +99,7 @@ function join(){
   };
 }
 
-/* Start WebRTC */
+/* WebRTC P2P Setup */
 async function startRTC(initiator){
   document.getElementById("pinBox").style.display="none";
   document.getElementById("chatBox").style.display="block";
@@ -137,8 +138,7 @@ async function startRTC(initiator){
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     ws.send(JSON.stringify({type:"offer",pin:myPin,sdp:offer}));
-  }
-  else{
+  } else {
     pc.ondatachannel = e=>{
       dc = e.channel;
       setupDC();
@@ -146,36 +146,31 @@ async function startRTC(initiator){
   }
 }
 
-/* Setup DataChannel */
+/* DataChannel Setup */
 function setupDC(){
-  dc.onopen = ()=>{
-    setStatus("Chat Ready ✔","green");
-  };
-  dc.onclose = ()=>{
-    setStatus("Chat Closed ❌","red");
-  };
+  dc.onopen = ()=> setStatus("Chat Ready ✔","green");
+  dc.onclose = ()=> setStatus("Chat Closed ❌","red");
 
-  dc.onmessage = e=>{
-    addMsg(e.data,"peer");
-  };
+  dc.onmessage = e=> addMsg(e.data,"peer");
 }
 
-/* Send message */
+/* Send Message */
 function sendMsg(){
   const txt=document.getElementById("msgInput").value.trim();
   if(!txt) return;
 
   addMsg(txt,"me");
   dc.send(txt);
+
   document.getElementById("msgInput").value="";
 }
 
-/* Add message to UI */
+/* Add to UI */
 function addMsg(t,who){
-  const div=document.createElement("div");
-  div.className="msg-"+who;
-  div.textContent=t;
-  messages.appendChild(div);
+  const d=document.createElement("div");
+  d.className="msg-"+who;
+  d.textContent=t;
+  messages.appendChild(d);
   messages.scrollTop=messages.scrollHeight;
 }
 </script>
