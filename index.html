@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Messages</title>
+<style>
+  :root{
+    --primary:#25D366;
+    --bg:#ECE5DD;
+    --bubble-me:#DCF8C6;
+    --bubble-peer:#FFFFFF;
+    --muted:#727272;
+    --card:#FFFFFF;
+  }
+  [data-theme="dark"]{
+    --bg:#0b1412;
+    --card:#111a18;
+    --bubble-me:#213522;
+    --bubble-peer:#122024;
+    --muted:#9aa0a0;
+  }
+  html,body{height:100%;margin:0;font-family:Helvetica, Arial, sans-serif;background:var(--bg);-webkit-font-smoothing:antialiased}
+  .app{height:100vh;display:flex;flex-direction:column;max-width:920px;margin:0 auto}
+  .topbar{height:56px;background:var(--primary);color:#fff;display:flex;align-items:center;padding:8px 12px;gap:12px}
+  .avatar{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-weight:700}
+  .title{font-size:16px;font-weight:700}
+  .subtitle{font-size:12px;color:rgba(255,255,255,0.9)}
+  #codeModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:transparent;z-index:999}
+  .codeBox{width:92%;max-width:420px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,0.12);display:flex;flex-direction:column;gap:12px}
+  .pinRow{display:flex;gap:8px}
+  .pinInput{flex:1;padding:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}
+  .pinBtn{background:var(--primary);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700}
+  .chatArea{flex:1;display:flex;flex-direction:column;background:var(--bg)}
+  .messages{flex:1;padding:14px;overflow:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+  .row.me{align-self:flex-end}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.04);line-height:1.3}
+  .bubble.me{background:var(--bubble-me)}
+  .bubble.peer{background:var(--bubble-peer)}
+  .meta{font-size:11px;color:var(--muted);margin-top:6px;text-align:right}
+  .composer{display:flex;gap:8px;padding:10px;background:transparent;align-items:center}
+  .attachBtn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:transparent;border:none;font-size:20px}
+  .msgInput{flex:1;padding:12px;border-radius:24px;border:1px solid #ddd;background:var(--card)}
+  .sendBtn{background:var(--primary);color:#fff;border:none;padding:10px 16px;border-radius:20px;font-weight:700}
+  .fileThumb{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.03);padding:8px;border-radius:8px}
+  .thumbImg{width:72px;height:54px;object-fit:cover;border-radius:6px}
+  #unlockOverlay,#blockOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
+  #blockOverlay{background:rgba(0,0,0,0.95);color:#fff;font-size:18px}
+  #unlockOverlay .box{background:var(--card);padding:18px;border-radius:12px;min-width:260px}
+  @media(max-width:700px){ .codeBox{margin:20px} .title{font-size:15px} }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="topbar" id="topbar" title="">
+    <div class="avatar" id="avatar">C</div>
+    <div>
+      <div class="title" id="contactTitle">Chats</div>
+      <div class="subtitle" id="contactSub">Tap to chat</div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="width:40px;height:40px;"></div>
+  </div>
+
+  <div class="chatArea">
+    <div class="messages" id="messages"></div>
+
+    <div id="filePreview" style="padding:10px"></div>
+
+    <div class="composer">
+      <button class="attachBtn" id="attachBtn">📎</button>
+      <input type="file" id="fileInput" style="display:none" />
+      <input id="messageInput" class="msgInput" placeholder="Type a message" />
+      <button class="sendBtn" id="sendBtn">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Code entry modal (disguised PIN) -->
+<div id="codeModal">
+  <div class="codeBox" role="dialog" aria-modal="true">
+    <input id="codeField" class="pinInput" placeholder="Enter PIN" autocomplete="off" />
+    <div style="display:flex;gap:8px">
+      <button class="pinBtn" id="codeEnter">Open</button>
+      <button class="pinBtn" id="codeCancel" style="background:#e0e0e0;color:#000">Close</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);">Enter the PIN you share with your contact.</div>
+  </div>
+</div>
+
+<!-- Unlock overlay (after lock) -->
+<div id="unlockOverlay">
+  <div class="box">
+    <div style="font-weight:700;margin-bottom:8px">Unlock</div>
+    <input id="unlockField" class="pinInput" placeholder="Enter PIN" />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="pinBtn" id="unlockBtn">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- block overlay shown momentarily to prevent clean screenshots -->
+<div id="blockOverlay"><div>Protected</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
+<script>
+/* CONFIG */
+const SIGNAL_URL = "wss://free-signalling-chat.vercel.app/onlyus";
+
+/* THEME AUTOTOGGLE (triple-tap top-left) */
+(function(){
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(prefersDark) document.documentElement.setAttribute('data-theme','dark');
+  let taps=0; document.getElementById('topbar').addEventListener('click', (e)=>{
+    if(e.clientX < 120 && e.clientY < 80){ taps++; setTimeout(()=>taps=0,700); if(taps>=3){ if(document.documentElement.hasAttribute('data-theme')) document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); taps=0; } }
+  });
+})();
+
+/* STATE */
+let ws=null, pc=null, dc=null;
+let myKey=null, theirKey=null, lastPin=null;
+let messagesEl = document.getElementById('messages');
+const messageInput = document.getElementById('messageInput');
+const codeModal = document.getElementById('codeModal');
+const codeField = document.getElementById('codeField');
+const codeEnter = document.getElementById('codeEnter');
+const codeCancel = document.getElementById('codeCancel');
+const unlockOverlay = document.getElementById('unlockOverlay');
+const unlockField = document.getElementById('unlockField');
+const unlockBtn = document.getElementById('unlockBtn');
+const blockOverlay = document.getElementById('blockOverlay');
+const fileInput = document.getElementById('fileInput');
+const filePreview = document.getElementById('filePreview');
+
+/* UI helpers */
+function addMessage(text, who='peer', time=null){
+  const r = document.createElement('div'); r.className = 'row '+(who==='me'?'me':''); 
+  const b = document.createElement('div'); b.className='bubble '+(who==='me'?'me':'peer');
+  b.innerHTML = text + (time?`<div class="meta">${time}</div>`:''); 
+  r.appendChild(b); messagesEl.appendChild(r); messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* CRYPTO helpers */
+async function derivePin(pin){
+  const enc = new TextEncoder();
+  const salt = enc.encode('onlyus-whatsapp-salt');
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), {name:'PBKDF2'}, false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt, iterations:130000}, keyMat, 256);
+  return new Uint8Array(bits);
+}
+function encryptObj(obj){
+  const s = JSON.stringify(obj);
+  const nonce = nacl.randomBytes(nacl.box.nonceLength);
+  const myBox = nacl.box.keyPair.fromSecretKey(myKey.secretKey.slice(0,32));
+  const cipher = nacl.box(nacl.util.decodeUTF8(s), nonce, theirKey, myBox.secretKey);
+  const out = new Uint8Array(nonce.length + cipher.length); out.set(nonce); out.set(cipher, nonce.length);
+  return nacl.util.encodeBase64(out);
+}
+function decryptB64(b64){
+  const data = nacl.util.decodeBase64(b64);
+  const n = data.slice(0, nacl.box.nonceLength);
+  const c = data.slice(nacl.box.nonceLength);
+  const myBox = nacl.box.keyPair.fromSecretKey(myKey.secretKey.slice(0,32));
+  const plain = nacl.box.open(c, n, theirKey, myBox.secretKey);
+  return JSON.parse(nacl.util.encodeUTF8(plain));
+}
+
+/* SIGNALING & AUTO-JOIN */
+codeEnter.addEventListener('click', async ()=>{
+  if(ws) return;
+  const pin = codeField.value.trim(); if(!pin) return;
+  lastPin = pin;
+  const seed = await derivePin(pin);
+  myKey = nacl.sign.keyPair.fromSeed(seed.slice(0,32));
+  ws = new WebSocket(SIGNAL_URL);
+  ws.onopen = ()=>{ ws.send(JSON.stringify({type:'join'})); ws.send(JSON.stringify({type:'pub', pub:Array.from(myKey.publicKey)})); };
+  ws.onmessage = async (ev)=>{ let d; try{ d = JSON.parse(ev.data);}catch{} if(!d) return;
+    if(d.type==='pub'){ theirKey = new Uint8Array(d.pub); } 
+    if(d.type==='peer-joined'){ startRTC(true); } 
+    if(d.type==='offer'){ await startRTC(false); await pc.setRemoteDescription(d.sdp); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); ws.send(JSON.stringify({type:'answer', sdp:pc.localDescription})); }
+    if(d.type==='answer'){ await pc.setRemoteDescription(d.sdp); }
+    if(d.type==='ice'){ try{ await pc.addIceCandidate(d.c); }catch{} }
+  };
+  codeModal.style.display = 'none';
+});
+codeCancel.addEventListener('click', ()=>{ codeModal.style.display='none'; });
+
+/* WebRTC */
+async function startRTC(init){
+  if(pc) return;
+  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  pc.onicecandidate = e => { if(e.candidate && ws) ws.send(JSON.stringify({type:'ice', c:e.candidate})); };
+  if(init){
+    dc = pc.createDataChannel('ou'); setupDC();
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer); ws.send(JSON.stringify({type:'offer', sdp:pc.localDescription}));
+  } else {
+    pc.ondatachannel = e => { dc = e.channel; setupDC(); };
+  }
+}
+function setupDC(){
+  dc.onopen = ()=>{};
+  dc.onmessage = ev => {
+    try{
+      const pkt = decryptB64(ev.data);
+      if(pkt.t==='msg') addMessage(escapeHtml(pkt.text),'peer', new Date(pkt.ts).toLocaleTimeString());
+      if(pkt.t==='file') addMessage(`<img src="${pkt.data}" style="width:160px;border-radius:8px"><div style="font-size:12px;color:var(--muted)">${escapeHtml(pkt.name)}</div>`,'peer');
+    }catch(e){ console.error(e); }
+  };
+}
+
+/* Sending */
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
+function sendMessage(){
+  const txt = messageInput.value.trim();
+  if(!txt && fileInput.files.length===0) return;
+  if(txt && dc && dc.readyState==='open'){
+    const pkt = {t:'msg', text:txt, ts:Date.now()};
+    dc.send(encryptObj(pkt));
+    addMessage(escapeHtml(txt),'me', new Date().toLocaleTimeString());
+    messageInput.value='';
+  } else if(fileInput.files.length){
+    sendFile(fileInput.files[0]); filePreview.innerHTML=''; fileInput.value='';
+  }
+}
+
+/* Files */
+document.getElementById('attachBtn').addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', ()=>{ const f = fileInput.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ filePreview.innerHTML = `<div class="fileThumb"><img class="thumbImg" src="${r.result}"><div style="font-size:13px">${f.name}</div></div>`; }; r.readAsDataURL(f);});
+function sendFile(f){ const r=new FileReader(); r.onload=()=>{ const pkt={t:'file', name:f.name, data:r.result, ts:Date.now()}; dc.send(encryptObj(pkt)); addMessage('📁 '+escapeHtml(f.name),'me'); }; r.readAsDataURL(f); }
+
+/* LOCAL WIPE + UNLOCK + SCREENSHOT BLOCK */
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) doLocalWipe(); });
+let idleTimer=null; function resetIdle(){ clearTimeout(idleTimer); idleTimer=setTimeout(()=>{ if(document.hidden) doLocalWipe(); },3500); }
+window.onload=resetIdle; document.onmousemove=resetIdle; document.onkeypress=resetIdle; document.ontouchstart=resetIdle;
+
+function doLocalWipe(){
+  messagesEl = document.getElementById('messages');
+  messagesEl.innerHTML=''; filePreview.innerHTML='';
+  blockOverlay.style.display='flex';
+  setTimeout(()=>{ blockOverlay.style.display='none'; unlockOverlay.style.display='flex'; }, 250);
+}
+unlockBtn.addEventListener('click', ()=>{ const v = unlockField.value.trim(); if(v && lastPin && v===lastPin){ unlockOverlay.style.display='none'; unlockField.value=''; } else { unlockField.style.border='1px solid red'; } });
+
+/* PrintScreen detection */
+window.addEventListener('keyup', (e)=>{ if(e.key==='PrintScreen'){ blockOverlay.style.display='flex'; setTimeout(()=>blockOverlay.style.display='none',600); } });
+
+/* helper: escape HTML */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]) ); }
+
+</script>
+</body>
+</html>
