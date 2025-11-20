@@ -1,177 +1,106 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Whisper — Private 2-Person Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whisper Simple Chat</title>
 
 <style>
-body{
-  margin:0;font-family:sans-serif;background:#f2f2f2;
-  display:flex;align-items:center;justify-content:center;height:100vh;
+body{font-family:sans-serif;margin:0;background:#f4f4f4;padding:20px}
+#login,#chat{
+  max-width:400px;margin:auto;background:#fff;padding:20px;
+  border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)
 }
-#pinBox,#chatBox{
-  width:90%;max-width:400px;background:#fff;padding:20px;
-  border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);
-}
-#chatBox{display:none}
+#chat{display:none}
 input,button{
-  width:100%;padding:12px;font-size:16px;margin-top:10px;border-radius:6px;
+  width:100%;padding:12px;margin-top:10px;font-size:16px;border-radius:6px
 }
-button{border:none;background:#008069;color:#fff;font-weight:600}
+button{background:#008069;color:#fff;border:none;font-weight:bold}
 #messages{
-  height:300px;overflow:auto;border:1px solid #ddd;padding:10px;margin:10px 0;
-  border-radius:6px;background:#fafafa;
+  height:300px;overflow:auto;border:1px solid #ddd;padding:10px;margin-top:10px;
+  background:#fafafa;border-radius:6px
 }
-.msg-me{text-align:right;margin:6px;color:#008069;font-weight:600}
-.msg-peer{text-align:left;margin:6px;color:#333;font-weight:600}
-#status{text-align:center;margin-top:8px;font-size:14px;font-weight:600}
+.msg-me{text-align:right;color:#008069;margin:6px;font-weight:600}
+.msg-other{text-align:left;color:#444;margin:6px;font-weight:600}
 </style>
 
 </head>
 <body>
 
-<!-- PIN SCREEN -->
-<div id="pinBox">
+<div id="login">
   <h3>Whisper — Enter PIN</h3>
-  <input id="pinInput" placeholder="1234">
-  <button onclick="joinChat()">Start Chat</button>
-  <div id="status">Waiting…</div>
+  <input id="pin" placeholder="Enter 8-digit PIN">
+  <button onclick="startChat()">Start Chat</button>
 </div>
 
-<!-- CHAT SCREEN -->
-<div id="chatBox">
-  <h3>Whisper</h3>
-  <div id="status"></div>
+<div id="chat">
+  <h3>Whisper Chat</h3>
   <div id="messages"></div>
-  <input id="msgInput" placeholder="Type message">
+  <input id="msg" placeholder="Type message...">
   <button onclick="sendMsg()">Send</button>
 </div>
 
 <script>
-/* NEW BEST SIGNAL SERVER */
-const SIGNAL_URL = "wss://onlyus-signal.onrender.com";
+let PIN="";
+let timer=null;
 
-let ws, pc, dc, myPin;
+// PUBLIC STORAGE API (free)
+const API="https://jsonbin.org/ds-whisper/";
 
-/* Status update */
-function setStatus(t,c="#008069"){
-  const s=document.getElementById("status");
-  s.textContent=t; s.style.color=c;
-}
-
-/* Join with PIN */
-function joinChat(){
-  myPin = document.getElementById("pinInput").value.trim();
-  if(!myPin) return alert("Enter PIN");
-
-  ws = new WebSocket(SIGNAL_URL);
-
-  ws.onopen = ()=>{
-    setStatus("Signal Connected ✔","#007b39");
-    ws.send(JSON.stringify({type:"join",pin:myPin}));
-  };
-
-  ws.onerror = ()=> setStatus("Signal Error ❌","red");
-  ws.onclose = ()=> setStatus("Signal Closed ❌","red");
-
-  ws.onmessage = async ev=>{
-    const data = JSON.parse(ev.data);
-
-    if(data.type==="match"){
-      setStatus("Peer Found — Connecting…","#444");
-      startRTC(true);
-    }
-    if(data.type==="offer"){
-      await startRTC(false);
-      await pc.setRemoteDescription(data.sdp);
-      const ans = await pc.createAnswer();
-      await pc.setLocalDescription(ans);
-      ws.send(JSON.stringify({type:"answer",pin:myPin,sdp:pc.localDescription}));
-    }
-    if(data.type==="answer"){
-      await pc.setRemoteDescription(data.sdp);
-    }
-    if(data.type==="ice"){
-      try{ await pc.addIceCandidate(data.candidate); }catch{}
-    }
-  };
-}
-
-/* WebRTC Connection */
-async function startRTC(initiator){
-  document.getElementById("pinBox").style.display="none";
-  document.getElementById("chatBox").style.display="block";
-
-  setStatus("Connecting Peer-to-Peer…","#444");
-
-  pc = new RTCPeerConnection({
-    iceServers:[
-      {urls:"stun:stun.l.google.com:19302"},
-      {
-        urls:"turn:openrelay.metered.ca:80",
-        username:"openrelayproject",
-        credential:"openrelayproject"
-      }
-    ]
-  });
-
-  pc.onicecandidate = e=>{
-    if(e.candidate){
-      ws.send(JSON.stringify({type:"ice",pin:myPin,candidate:e.candidate}));
-    }
-  };
-
-  pc.onconnectionstatechange = ()=>{
-    if(pc.connectionState==="connected"){
-      setStatus("Connected (P2P) ✔","green");
-    }
-    if(pc.connectionState==="failed"){
-      setStatus("Connection Failed ❌","red");
-    }
-  };
-
-  if(initiator){
-    dc = pc.createDataChannel("chat");
-    setupDC();
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({type:"offer",pin:myPin,sdp:offer}));
-  } else {
-    pc.ondatachannel = e=>{
-      dc = e.channel;
-      setupDC();
-    };
+async function startChat(){
+  PIN=document.getElementById("pin").value.trim();
+  if(PIN.length!==8 || !/^\d+$/.test(PIN)){
+    alert("Enter 8 digit PIN"); return;
   }
+
+  document.getElementById("login").style.display="none";
+  document.getElementById("chat").style.display="block";
+
+  loadMessages();
+  timer=setInterval(loadMessages,1200);
 }
 
-/* Data Channel Ready */
-function setupDC(){
-  dc.onopen = ()=> setStatus("Chat Ready ✔","green");
-  dc.onclose = ()=> setStatus("Chat Closed ❌","red");
-  dc.onmessage = e=> addMsg(e.data,"peer");
+async function loadMessages(){
+  try{
+    let r=await fetch(API+PIN);
+    if(!r.ok) return;
+    let data=await r.json();
+
+    let box=document.getElementById("messages");
+    box.innerHTML="";
+
+    (data||[]).forEach(m=>{
+      let d=document.createElement("div");
+      d.className="msg-"+(m.me?"me":"other");
+      d.textContent=m.text;
+      box.appendChild(d);
+    });
+
+    box.scrollTop=box.scrollHeight;
+  }catch(e){}
 }
 
-/* Send text */
-function sendMsg(){
-  const txt=document.getElementById("msgInput").value.trim();
+async function sendMsg(){
+  let txt=document.getElementById("msg").value.trim();
   if(!txt) return;
 
-  addMsg(txt,"me");
-  if(dc && dc.readyState==="open") dc.send(txt);
+  let r=await fetch(API+PIN);
+  let old=[];
+  if(r.ok){
+    old=await r.json();
+  }
 
-  document.getElementById("msgInput").value="";
-}
+  old.push({text:txt,me:true});
 
-/* Add to UI */
-function addMsg(t,who){
-  const d=document.createElement("div");
-  d.className="msg-"+who;
-  d.textContent=t;
-  messages.appendChild(d);
-  messages.scrollTop=messages.scrollHeight;
+  await fetch(API+PIN,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(old)
+  });
+
+  document.getElementById("msg").value="";
+  loadMessages();
 }
 </script>
-
 </body>
 </html>
