@@ -139,11 +139,6 @@ border-radius:10px;
 margin-top:5px;
 }
 
-.toggle{
-font-size:12px;
-margin-top:5px;
-}
-
 </style>
 </head>
 
@@ -172,11 +167,6 @@ margin-top:5px;
 RCM TEAM CHAT
 
 <div class="online" id="onlineCount">🟢 0 Online</div>
-
-<div class="toggle">
-Auto Delete
-<input type="checkbox" id="autoSwitch" checked>
-</div>
 
 </div>
 
@@ -212,9 +202,7 @@ onChildRemoved,
 onValue,
 set,
 onDisconnect,
-update,
-get,
-remove
+update
 }
 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -303,10 +291,6 @@ let msg=document.getElementById("msg").value;
 
 let file=document.getElementById("imgInput").files[0];
 
-let autoDelete=document.getElementById("autoSwitch").checked;
-
-let ttl=autoDelete?30000:null;
-
 let imageUrl=null;
 
 if(file){
@@ -326,7 +310,6 @@ text:msg,
 image:imageUrl,
 user:userId,
 time:Date.now(),
-ttl:ttl,
 delivered:true,
 seen:false
 });
@@ -385,26 +368,6 @@ let el=document.getElementById(data.key);
 if(el) el.remove();
 
 });
-
-/* AUTO DELETE */
-
-setInterval(async()=>{
-
-const snapshot=await get(chatRef);
-
-snapshot.forEach(child=>{
-
-let data=child.val();
-
-if(data.ttl && Date.now()-data.time>data.ttl){
-
-remove(child.ref);
-
-}
-
-});
-
-},5000);
 
 /* BUTTONS */
 
