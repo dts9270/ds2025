@@ -45,20 +45,9 @@ font-size:14px;
 margin-left:5px;
 }
 
-.rcm{
-background:#2ecc71;
-color:white;
-}
-
-.lock{
-background:#e74c3c;
-color:white;
-}
-
-.clear{
-background:#f39c12;
-color:white;
-}
+.rcm{background:#2ecc71;color:white;}
+.lock{background:#e74c3c;color:white;}
+.clear{background:#f39c12;color:white;}
 
 .online{
 font-size:12px;
@@ -129,16 +118,8 @@ border-radius:8px;
 cursor:pointer;
 }
 
-.send{
-background:black;
-color:white;
-}
-
-.login{
-background:black;
-color:white;
-width:100%;
-}
+.send{background:black;color:white;}
+.login{background:black;color:white;width:100%;}
 
 img{
 max-width:200px;
@@ -214,10 +195,8 @@ onValue,
 set,
 onDisconnect,
 update,
-remove,
-get
+remove
 }
-
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 import {
@@ -226,7 +205,6 @@ ref as sRef,
 uploadBytes,
 getDownloadURL
 }
-
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 
@@ -285,7 +263,6 @@ let code=document.getElementById("code").value;
 if(code=="0911"){
 
 document.getElementById("loginPage").style.display="none";
-
 document.getElementById("chatPage").style.display="block";
 
 }else{
@@ -323,7 +300,6 @@ text:msg,
 image:imageUrl,
 user:userId,
 time:Date.now(),
-delivered:true,
 seen:false
 });
 
@@ -342,26 +318,14 @@ let cls=(d.user==userId)?"mymsg":"msg";
 
 let time=new Date(d.time).toLocaleTimeString();
 
-let status="";
-
-if(d.user==userId){
-
-status=d.seen?"✓✓":"✓";
-
-}
-
 let div=document.createElement("div");
 
 div.className=cls;
 
 div.innerHTML=`
-
 ${d.text||""}
-
 ${d.image?`<img src="${d.image}">`:""}
-
-<div class="time">${time} ${status}</div>
-
+<div class="time">${time}</div>
 `;
 
 document.getElementById("chat").appendChild(div);
@@ -373,30 +337,23 @@ update(data.ref,{seen:true});
 /* BUTTONS */
 
 window.openRCM=function(){
-
 window.location.href="https://www.rcmworld.com";
-
 }
 
 window.lockChat=function(){
-
 document.getElementById("chatPage").style.display="none";
-
 document.getElementById("loginPage").style.display="block";
-
 }
+
+/* CLEAR CHAT */
 
 window.clearChat=async function(){
 
 if(confirm("सगळे messages delete करायचे का?")){
 
-const snapshot = await get(chatRef);
+await remove(ref(db,"news"));
 
-snapshot.forEach(child => {
-
-remove(child.ref);
-
-});
+document.getElementById("chat").innerHTML="";
 
 }
 
