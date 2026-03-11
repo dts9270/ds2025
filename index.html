@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>RCM Team Chat</title>
+<title>RCM WORLD</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&display=swap" rel="stylesheet">
 
@@ -156,7 +156,7 @@ margin-top:5px;
 <div id="loginPage">
 
 <div class="header">
-<div class="title">RCM TEAM CHAT</div>
+<div class="title">RCM WORLD</div>
 </div>
 
 <div class="input-box">
@@ -173,7 +173,7 @@ margin-top:5px;
 
 <div class="header">
 
-<div class="title">RCM CHAT</div>
+<div class="title">RCM WORLD</div>
 
 <div>
 <button class="top-btn rcm" onclick="openRCM()">🌐 RCM</button>
@@ -214,7 +214,8 @@ onValue,
 set,
 onDisconnect,
 update,
-remove
+remove,
+get
 }
 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -385,11 +386,17 @@ document.getElementById("loginPage").style.display="block";
 
 }
 
-window.clearChat=function(){
+window.clearChat=async function(){
 
 if(confirm("सगळे messages delete करायचे का?")){
 
-remove(ref(db,"news"));
+const snapshot = await get(chatRef);
+
+snapshot.forEach(child => {
+
+remove(child.ref);
+
+});
 
 }
 
