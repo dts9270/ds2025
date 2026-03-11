@@ -49,6 +49,11 @@ margin-left:5px;
 .lock{background:#e74c3c;color:white;}
 .clear{background:#f39c12;color:white;}
 
+.toggle{
+font-size:12px;
+margin-left:10px;
+}
+
 .online{
 font-size:12px;
 color:green;
@@ -157,9 +162,18 @@ margin-top:5px;
 <div class="title">RCM WORLD</div>
 
 <div>
+
 <button class="top-btn rcm" onclick="openRCM()">🌐 RCM</button>
+
 <button class="top-btn lock" onclick="lockChat()">🔒 Lock</button>
-<button class="top-btn clear" onclick="clearChat()">🧹 Clear</button>
+
+<button class="top-btn clear" onclick="clearChat()">🧹 Delete All</button>
+
+<label class="toggle">
+Auto Delete
+<input type="checkbox" id="autoDeleteToggle">
+</label>
+
 </div>
 
 </div>
@@ -195,7 +209,8 @@ onValue,
 set,
 onDisconnect,
 update,
-remove
+remove,
+get
 }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -206,7 +221,6 @@ uploadBytes,
 getDownloadURL
 }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
 
 const firebaseConfig = {
 apiKey: "AIzaSyCoNO0Ykevb3whEaiwSYAkRGtjTEjJslnU",
@@ -295,13 +309,27 @@ imageUrl=await getDownloadURL(imgRef);
 
 if(msg=="" && !imageUrl) return;
 
-push(chatRef,{
+let data={
 text:msg,
 image:imageUrl,
 user:userId,
 time:Date.now(),
 seen:false
-});
+};
+
+let newMsg=push(chatRef,data);
+
+/* AUTO DELETE */
+
+if(document.getElementById("autoDeleteToggle").checked){
+
+setTimeout(()=>{
+
+remove(newMsg);
+
+},30000);
+
+}
 
 document.getElementById("msg").value="";
 document.getElementById("imgInput").value="";
@@ -344,8 +372,6 @@ window.lockChat=function(){
 document.getElementById("chatPage").style.display="none";
 document.getElementById("loginPage").style.display="block";
 }
-
-/* CLEAR CHAT */
 
 window.clearChat=async function(){
 
