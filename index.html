@@ -49,18 +49,6 @@ margin-left:5px;
 .lock{background:#e74c3c;color:white;}
 .clear{background:#f39c12;color:white;}
 
-.toggle{
-font-size:12px;
-margin-left:10px;
-}
-
-.online{
-font-size:12px;
-color:green;
-text-align:center;
-margin-top:3px;
-}
-
 .chat-box{
 background:white;
 border-radius:10px;
@@ -72,8 +60,6 @@ display:flex;
 flex-direction:column;
 }
 
-/* OTHER USER */
-
 .msg{
 background:white;
 border:1px solid #ddd;
@@ -83,8 +69,6 @@ margin:5px 0;
 max-width:75%;
 align-self:flex-start;
 }
-
-/* MY MESSAGE */
 
 .mymsg{
 background:#e8f8f5;
@@ -110,13 +94,8 @@ margin-left:6px;
 color:white;
 }
 
-.delivered{
-background:orange;
-}
-
-.read{
-background:#27ae60;
-}
+.delivered{background:orange;}
+.read{background:#27ae60;}
 
 .input-box{
 background:white;
@@ -145,23 +124,18 @@ cursor:pointer;
 }
 
 .send{background:black;color:white;}
-.login{background:black;color:white;width:100%;}
 
-/* loading */
+.typing{
+font-size:12px;
+color:#666;
+margin-top:5px;
+}
 
-.loading{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:white;
-display:none;
-align-items:center;
-justify-content:center;
-font-size:22px;
-font-weight:900;
-z-index:999;
+.date-sep{
+text-align:center;
+font-size:12px;
+margin:10px;
+color:#666;
 }
 
 </style>
@@ -169,54 +143,29 @@ z-index:999;
 
 <body>
 
-<div class="loading" id="loading">
-Opening RCM WORLD...
-</div>
+<audio id="msgSound">
+<source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3">
+</audio>
 
 <div class="container">
-
-<div id="loginPage">
-
-<div class="header">
-<div class="title">RCM WORLD</div>
-</div>
-
-<div class="input-box">
-
-<input type="password" id="code" placeholder="Enter Code">
-
-<button class="login" onclick="login()">Open Chat</button>
-
-</div>
-
-</div>
-
-<div id="chatPage" style="display:none">
 
 <div class="header">
 
 <div class="title">RCM WORLD</div>
 
 <div>
-
 <button class="top-btn rcm" onclick="openRCM()">🌐 RCM</button>
-
-<button class="top-btn lock" onclick="lockChat()">🔒 Lock</button>
-
-<button class="top-btn clear" onclick="clearChat()">🧹 Delete All</button>
-
-<label class="toggle">
-Auto Delete
-<input type="checkbox" id="autoDeleteToggle">
-</label>
-
+<button class="top-btn lock" onclick="lockChat()">🔒</button>
+<button class="top-btn clear" onclick="clearChat()">🧹</button>
 </div>
 
 </div>
-
-<div class="online" id="onlineCount">🟢 0 Online</div>
 
 <div class="chat-box" id="chat"></div>
+
+<div id="typing" class="typing" style="display:none">
+Someone is typing...
+</div>
 
 <div class="input-box">
 
@@ -225,7 +174,10 @@ Auto Delete
 <button class="send" onclick="send()">Send</button>
 </div>
 
-</div>
+<label style="font-size:12px">
+Auto Delete
+<input type="checkbox" id="autoDeleteToggle">
+</label>
 
 </div>
 
@@ -246,7 +198,6 @@ onDisconnect,
 update,
 remove
 }
-
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -261,53 +212,17 @@ appId: "1:846109078144:web:ab8cca30cfa40cbbab6c65"
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
-const chatRef=ref(db,"news");
 
-/* USER ID */
+const chatRef=ref(db,"news");
+const typingRef=ref(db,"typing");
+
+/* USER */
 
 let userId=localStorage.getItem("userId");
 
 if(!userId){
-
 userId="u"+Math.floor(Math.random()*100000);
-
 localStorage.setItem("userId",userId);
-
-}
-
-/* ONLINE USERS */
-
-const onlineRef=ref(db,"online/"+userId);
-
-set(onlineRef,true);
-
-onDisconnect(onlineRef).remove();
-
-onValue(ref(db,"online"),(snap)=>{
-
-let count=snap.size||0;
-
-document.getElementById("onlineCount").innerText="🟢 "+count+" Online";
-
-});
-
-/* LOGIN */
-
-window.login=function(){
-
-let code=document.getElementById("code").value;
-
-if(code=="0911"){
-
-document.getElementById("loginPage").style.display="none";
-document.getElementById("chatPage").style.display="block";
-
-}else{
-
-alert("Wrong Code");
-
-}
-
 }
 
 /* SEND */
@@ -328,9 +243,7 @@ seen:false
 if(document.getElementById("autoDeleteToggle").checked){
 
 setTimeout(()=>{
-
 remove(newMsg);
-
 },30000);
 
 }
@@ -341,21 +254,32 @@ document.getElementById("msg").value="";
 
 /* MESSAGE LISTENER */
 
+let chat=document.getElementById("chat");
+let lastDate="";
+
 onChildAdded(chatRef,(data)=>{
 
 let d=data.val();
+
+let date=new Date(d.time).toDateString();
+
+if(lastDate!==date){
+
+let sep=document.createElement("div");
+sep.className="date-sep";
+sep.innerText=date;
+chat.appendChild(sep);
+
+lastDate=date;
+
+}
 
 let time=new Date(d.time).toLocaleTimeString();
 
 let cls=(d.user==userId)?"mymsg":"msg";
 
-let statusClass="delivered";
-let statusText="Delivered";
-
-if(d.seen){
-statusClass="read";
-statusText="Read";
-}
+let statusClass=d.seen?"read":"delivered";
+let statusText=d.seen?"Read":"Delivered";
 
 let div=document.createElement("div");
 
@@ -365,51 +289,74 @@ div.innerHTML=`
 ${d.text}
 <div class="time">
 ${time}
-<span class="status ${statusClass}">${statusText}</span>
+<span class="status ${statusClass}">
+${statusText}
+</span>
 </div>
 `;
 
-let chat=document.getElementById("chat");
-
 chat.appendChild(div);
 
-/* AUTO SCROLL */
-
-chat.scrollTop = chat.scrollHeight;
+setTimeout(()=>{
+chat.scrollTop=chat.scrollHeight;
+},100);
 
 update(data.ref,{seen:true});
+
+if(d.user!==userId){
+document.getElementById("msgSound").play();
+}
+
+});
+
+/* TYPING */
+
+let msgInput=document.getElementById("msg");
+
+msgInput.addEventListener("input",()=>{
+
+set(ref(db,"typing/"+userId),true);
+
+setTimeout(()=>{
+remove(ref(db,"typing/"+userId));
+},2000);
+
+});
+
+onValue(typingRef,(snap)=>{
+
+let typingUsers=snap.val();
+
+if(!typingUsers){
+document.getElementById("typing").style.display="none";
+return;
+}
+
+let users=Object.keys(typingUsers);
+
+if(users.length>0 && !typingUsers[userId]){
+document.getElementById("typing").style.display="block";
+}else{
+document.getElementById("typing").style.display="none";
+}
 
 });
 
 /* BUTTONS */
 
 window.openRCM=function(){
-
-document.getElementById("loading").style.display="flex";
-
-setTimeout(()=>{
-
 window.location.replace("https://www.rcmworld.com");
-
-},2000);
-
 }
 
 window.lockChat=function(){
-
-document.getElementById("chatPage").style.display="none";
-document.getElementById("loginPage").style.display="block";
-
+location.reload();
 }
 
 window.clearChat=async function(){
 
-if(confirm("सगळे messages delete करायचे का?")){
-
+if(confirm("Delete all messages?")){
 await remove(ref(db,"news"));
-
-document.getElementById("chat").innerHTML="";
-
+chat.innerHTML="";
 }
 
 }
