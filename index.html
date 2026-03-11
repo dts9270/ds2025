@@ -72,13 +72,28 @@ display:flex;
 flex-direction:column;
 }
 
+/* OTHER USER MESSAGE */
+
 .msg{
 background:white;
 border:1px solid #ddd;
 padding:10px;
 border-radius:10px;
 margin:5px 0;
-max-width:90%;
+max-width:75%;
+align-self:flex-start;
+}
+
+/* MY MESSAGE */
+
+.mymsg{
+background:#e8f8f5;
+border:1px solid #ccc;
+padding:10px;
+border-radius:10px;
+margin:5px 0;
+max-width:75%;
+align-self:flex-end;
 }
 
 .time{
@@ -333,6 +348,8 @@ let d=data.val();
 
 let time=new Date(d.time).toLocaleTimeString();
 
+let cls = (d.user==userId) ? "mymsg" : "msg";
+
 let statusClass="delivered";
 let statusText="Delivered";
 
@@ -345,7 +362,7 @@ statusText="Read";
 
 let div=document.createElement("div");
 
-div.className="msg";
+div.className=cls;
 
 div.innerHTML=`
 
