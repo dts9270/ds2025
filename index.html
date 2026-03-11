@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DS Live Chat</title>
+<title>Live News Board</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&display=swap" rel="stylesheet">
 
@@ -11,7 +11,7 @@
 
 body{
 font-family:Outfit;
-background:#dfe6e9;
+background:#ececec;
 margin:0;
 padding:10px;
 }
@@ -22,70 +22,49 @@ margin:auto;
 }
 
 .header{
-background:linear-gradient(-45deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#4b0082,#9400d3);
-background-size:600% 600%;
-animation:rainbow 8s infinite;
-padding:20px;
-border-radius:18px;
-color:white;
+background:white;
+border-bottom:4px solid black;
+padding:15px;
 text-align:center;
-font-weight:800;
-font-size:22px;
-}
-
-@keyframes rainbow{
-0%{background-position:0% 50%;}
-50%{background-position:100% 50%;}
-100%{background-position:0% 50%;}
+font-size:26px;
+font-weight:900;
+letter-spacing:2px;
 }
 
 .chat-box{
 background:white;
-border-radius:15px;
+border-radius:10px;
 padding:10px;
 margin-top:15px;
 height:420px;
 overflow-y:auto;
-box-shadow:0 5px 15px rgba(0,0,0,0.1);
+box-shadow:0 5px 10px rgba(0,0,0,0.1);
 }
 
 .msg{
-padding:10px;
-border-radius:10px;
-margin-bottom:10px;
-background:#f1f2f6;
-}
-
-.name{
-font-weight:800;
-font-size:13px;
-color:#2d3436;
-}
-
-.text{
-font-size:15px;
-margin-top:3px;
+border-bottom:1px dashed #bbb;
+padding:10px 5px;
+font-size:16px;
 }
 
 .time{
 font-size:11px;
-color:#636e72;
-margin-top:2px;
+color:gray;
 }
 
 .input-box{
 margin-top:10px;
 background:white;
 padding:10px;
-border-radius:15px;
-box-shadow:0 5px 15px rgba(0,0,0,0.1);
+border-radius:10px;
+box-shadow:0 5px 10px rgba(0,0,0,0.1);
 }
 
 input{
 width:100%;
 padding:12px;
 margin-bottom:8px;
-border-radius:10px;
+border-radius:8px;
 border:1px solid #ccc;
 font-family:Outfit;
 }
@@ -98,22 +77,47 @@ gap:5px;
 button{
 padding:12px;
 border:none;
-border-radius:10px;
+border-radius:8px;
 font-weight:700;
 cursor:pointer;
 }
 
 .send{
-background:#2d3436;
+background:black;
 color:white;
 flex:1;
 }
 
-.mic{
-width:50px;
-background:#ff7675;
+.login{
+background:black;
 color:white;
-font-size:18px;
+width:100%;
+}
+
+/* FLOAT BUTTONS */
+
+.float-btn{
+position:fixed;
+right:15px;
+width:50px;
+height:50px;
+border-radius:50%;
+border:none;
+font-size:20px;
+cursor:pointer;
+box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
+.rcm-btn{
+bottom:90px;
+background:#2ecc71;
+color:white;
+}
+
+.lock-btn{
+bottom:30px;
+background:#e74c3c;
+color:white;
 }
 
 </style>
@@ -123,31 +127,51 @@ font-size:18px;
 
 <div class="container">
 
+<div id="loginPage">
+
+<div class="header">📰 LIVE NEWS BOARD</div>
+
+<div class="input-box">
+
+<input type="password" id="code" placeholder="Enter Code">
+
+<button class="login" onclick="login()">Open Board</button>
+
+</div>
+
+</div>
+
+
+<div id="chatPage" style="display:none">
+
 <div class="header">
-💬 DS Live Chat
+📰 LIVE NEWS BOARD
 </div>
 
 <div class="chat-box" id="chat"></div>
 
 <div class="input-box">
 
-<input type="text" id="name" placeholder="तुमचे नाव">
-
 <div class="row">
-<input type="text" id="msg" placeholder="Message...">
-<button class="mic" onclick="voice()">🎤</button>
-<button class="send" onclick="send()">Send</button>
+<input type="text" id="msg" placeholder="Write news...">
+<button class="send" onclick="send()">Publish</button>
 </div>
 
 </div>
 
 </div>
+
+</div>
+
+
+<button class="float-btn rcm-btn" onclick="openRCM()">🌐</button>
+<button class="float-btn lock-btn" onclick="lockChat()">🔒</button>
 
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded } 
+import { getDatabase, ref, push, onChildAdded, remove } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -163,27 +187,49 @@ appId: "1:846109078144:web:ab8cca30cfa40cbbab6c65"
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const chatRef = ref(db,"messages");
+const chatRef = ref(db,"news");
 
-window.send = function(){
 
-let name=document.getElementById("name").value;
-let msg=document.getElementById("msg").value;
+window.login=function(){
 
-if(name==""||msg==""){
-alert("Name आणि Message लिहा");
-return;
+let code=document.getElementById("code").value;
+
+if(code=="0911"){
+
+document.getElementById("loginPage").style.display="none";
+document.getElementById("chatPage").style.display="block";
+
+}else{
+
+alert("Wrong Code");
+
 }
 
-push(chatRef,{
-name:name,
+}
+
+
+window.send=function(){
+
+let msg=document.getElementById("msg").value;
+
+if(msg=="") return;
+
+let newMsg = push(chatRef,{
 text:msg,
 time:Date.now()
 });
 
 document.getElementById("msg").value="";
 
+
+/* AUTO DELETE 15 SEC */
+
+setTimeout(()=>{
+remove(newMsg)
+},15000);
+
 }
+
 
 onChildAdded(chatRef,(data)=>{
 
@@ -193,8 +239,7 @@ let time=new Date(d.time).toLocaleTimeString();
 
 let html=`
 <div class="msg">
-<div class="name">👤 ${d.name}</div>
-<div class="text">${d.text}</div>
+${d.text}
 <div class="time">${time}</div>
 </div>
 `;
@@ -206,22 +251,17 @@ document.getElementById("chat").scrollHeight;
 
 });
 
-window.voice=function(){
 
-if(!('webkitSpeechRecognition' in window)){
-alert("Voice support नाही");
-return;
+window.openRCM=function(){
+
+window.open("https://www.rcmworld.com","_blank")
+
 }
 
-let rec=new webkitSpeechRecognition();
-rec.lang="mr-IN";
+window.lockChat=function(){
 
-rec.start();
-
-rec.onresult=(e)=>{
-document.getElementById("msg").value=
-e.results[0][0].transcript;
-}
+document.getElementById("chatPage").style.display="none"
+document.getElementById("loginPage").style.display="block"
 
 }
 
