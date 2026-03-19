@@ -8,156 +8,64 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
-body{
-margin:0;
-font-family:Outfit;
-background:#fff;
-}
+body{margin:0;font-family:Outfit;background:#fff}
 
 /* RCM */
-#rcmSite{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100vh;
-border:none;
-z-index:1;
-}
+#rcmSite{position:fixed;top:0;left:0;width:100%;height:100vh;border:none;z-index:1}
 
-/* SECRET DOT */
-#secretZone{
-position:fixed;
-bottom:12px;
-left:50%;
-transform:translateX(-50%);
-width:60px;
-height:30px;
-z-index:2;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-#secretZone::after{
-content:'';
-width:6px;
-height:6px;
-background:#aaa;
-border-radius:50%;
-opacity:0.4;
-}
+/* DOT */
+#secretZone{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:60px;height:30px;z-index:2;display:flex;justify-content:center;align-items:center}
+#secretZone::after{content:'';width:6px;height:6px;background:#aaa;border-radius:50%;opacity:0.4}
 
-/* CODE BOX */
-#codeBox{
-position:fixed;
-bottom:80px;
-left:50%;
-transform:translateX(-50%);
-background:#fff;
-padding:10px;
-border-radius:10px;
-display:none;
-z-index:5;
-border:1px solid #ddd;
-}
-#codeInput{
-width:120px;
-padding:8px;
-border:1px solid #ccc;
-text-align:center;
-}
+/* CODE */
+#codeBox{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:10px;display:none;z-index:5;border:1px solid #ddd}
+#codeInput{width:120px;padding:8px;border:1px solid #ccc;text-align:center}
 
 /* CHAT */
-.container{
-display:none;
-max-width:500px;
-margin:auto;
-background:#fff;
-}
+.container{display:none;max-width:500px;margin:auto;background:#fff}
+.header{padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #eee;font-weight:bold}
 
-/* HEADER */
-.header{
-padding:12px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-border-bottom:1px solid #eee;
-font-weight:bold;
-}
-
-/* CHAT LIST */
 .chat-box{
 height:420px;
 overflow-y:auto;
 padding:10px;
+display:flex;
+flex-direction:column-reverse;
 }
 
-/* MESSAGE STYLE */
-.msg, .mymsg{
-padding:8px 0;
-border-bottom:1px solid #f1f1f1;
-}
+/* TEXT STYLE */
+.msg,.mymsg{padding:8px 0;border-bottom:1px solid #f1f1f1}
+.mymsg{text-align:right}
 
-.mymsg{
-text-align:right;
-}
+.name{font-size:11px;color:#999}
+.text{font-size:15px}
+.time{font-size:10px;color:#aaa}
 
-/* NAME */
-.name{
-font-size:11px;
-color:#999;
-}
+.status{font-size:10px;margin-left:5px}
+.delivered{color:#2563eb}
+.read{color:#16a34a}
 
-/* TEXT */
-.text{
-font-size:15px;
-color:#111;
-}
-
-/* TIME */
-.time{
-font-size:10px;
-color:#aaa;
-margin-top:2px;
-}
+/* typing */
+.typing{font-size:12px;color:#888;margin:5px}
 
 /* INPUT */
-.input-box{
-padding:10px;
-border-top:1px solid #eee;
-}
-.row{
-display:flex;
-gap:5px;
-}
-input{
-width:100%;
-padding:10px;
-border:1px solid #ccc;
-}
-.send{
-padding:10px;
-background:#111;
-color:white;
-border:none;
-}
+.input-box{padding:10px;border-top:1px solid #eee}
+.row{display:flex;gap:5px}
+input{width:100%;padding:10px;border:1px solid #ccc}
+.send{padding:10px;background:black;color:white;border:none}
 </style>
 </head>
 
 <body>
 
-<!-- RCM -->
 <iframe id="rcmSite" src="https://www.rcmworld.com"></iframe>
 
-<!-- DOT -->
 <div id="secretZone"></div>
 
-<!-- CODE BOX -->
 <div id="codeBox">
 <input type="password" id="codeInput" placeholder="••••">
 </div>
 
-<!-- CHAT -->
 <div class="container">
 
 <div class="header">
@@ -170,9 +78,11 @@ border:none;
 
 <div class="chat-box" id="chat"></div>
 
+<div id="typing" class="typing" style="display:none">typing...</div>
+
 <div class="input-box">
 <div class="row">
-<input type="text" id="msg" placeholder="Enter">
+<input type="text" id="msg">
 <button class="send" onclick="send()">Add</button>
 </div>
 </div>
@@ -182,24 +92,24 @@ border:none;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, remove } 
+import { getDatabase, ref, push, onChildAdded, update, remove, set, onValue } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 /* FIREBASE */
 const firebaseConfig = {
 apiKey: "AIzaSyYOUR_KEY",
-authDomain: "dschat-18c13.firebaseapp.com",
-databaseURL: "https://dschat-18c13-default-rtdb.firebaseio.com",
-projectId: "dschat-18c13"
+databaseURL: "https://dschat-18c13-default-rtdb.firebaseio.com"
 };
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
+
 const chatRef=ref(db,"news");
+const typingRef=ref(db,"typing");
 
 /* USER */
 let userName = localStorage.getItem("chatUser") || "";
-document.getElementById("userName").innerText = userName;
+document.getElementById("userName").innerText=userName;
 
 /* SEND */
 window.send=function(){
@@ -209,7 +119,8 @@ if(msg=="") return;
 push(chatRef,{
 text:msg,
 user:userName,
-time:Date.now()
+time:Date.now(),
+seen:false
 });
 
 document.getElementById("msg").value="";
@@ -224,7 +135,10 @@ let d=data.val();
 let time=new Date(d.time).toLocaleTimeString();
 
 let myUser = localStorage.getItem("chatUser");
-let cls = (d.user===myUser) ? "mymsg" : "msg";
+let isMe = d.user===myUser;
+let cls = isMe ? "mymsg" : "msg";
+
+let statusClass = d.seen ? "read" : "delivered";
 
 let div=document.createElement("div");
 div.className=cls;
@@ -232,17 +146,45 @@ div.className=cls;
 div.innerHTML=`
 <div class="name">${d.user}</div>
 <div class="text">${d.text}</div>
-<div class="time">${time}</div>
+<div class="time">
+${time}
+${isMe ? `<span class="status ${statusClass}">${d.seen?"✔✔":"✔"}</span>`:""}
+</div>
 `;
 
-chat.appendChild(div);
-chat.scrollTop=chat.scrollHeight;
+chat.prepend(div);
+
+/* mark read */
+if(!isMe){
+update(data.ref,{seen:true});
+}
 
 });
 
-/* CLEAR CHAT */
+/* TYPING */
+let inputBox=document.getElementById("msg");
+
+inputBox.addEventListener("input",()=>{
+set(ref(db,"typing/"+userName),true);
+
+setTimeout(()=>{
+remove(ref(db,"typing/"+userName));
+},2000);
+});
+
+onValue(typingRef,(snap)=>{
+let data=snap.val();
+
+if(data && !data[userName]){
+document.getElementById("typing").style.display="block";
+}else{
+document.getElementById("typing").style.display="none";
+}
+});
+
+/* CLEAR */
 window.clearChat=function(){
-if(confirm("Clear all entries?")){
+if(confirm("Clear?")){
 remove(chatRef);
 chat.innerHTML="";
 }
@@ -254,20 +196,12 @@ location.reload();
 }
 
 /* 5 TAP */
-let tapCount=0;
-let lastTap=0;
+let tapCount=0,lastTap=0;
 let zone=document.getElementById("secretZone");
 
 zone.addEventListener("click",()=>{
-
 let now=Date.now();
-
-if(now - lastTap < 500){
-tapCount++;
-}else{
-tapCount=1;
-}
-
+tapCount=(now-lastTap<500)?tapCount+1:1;
 lastTap=now;
 
 if(tapCount===5){
@@ -275,17 +209,15 @@ document.getElementById("codeBox").style.display="block";
 document.getElementById("codeInput").focus();
 tapCount=0;
 }
-
 });
 
 /* CODE */
-let input=document.getElementById("codeInput");
+let codeInput=document.getElementById("codeInput");
 
-input.addEventListener("keyup",(e)=>{
-
+codeInput.addEventListener("keyup",(e)=>{
 if(e.key==="Enter"){
 
-let code=input.value;
+let code=codeInput.value;
 
 if(code==="2709"){
 localStorage.setItem("chatUser","P");
@@ -294,18 +226,16 @@ openChat();
 else if(code==="1108"){
 localStorage.setItem("chatUser","J");
 openChat();
-}
-else{
-input.value="";
-}
-
+}else{
+codeInput.value="";
 }
 
+}
 });
 
 function openChat(){
-let user = localStorage.getItem("chatUser");
-document.getElementById("userName").innerText = user;
+let user=localStorage.getItem("chatUser");
+document.getElementById("userName").innerText=user;
 
 document.getElementById("rcmSite").style.display="none";
 document.getElementById("secretZone").style.display="none";
