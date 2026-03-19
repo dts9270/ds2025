@@ -120,6 +120,7 @@ push(chatRef,{
 text:msg,
 user:userName,
 time:Date.now(),
+delivered:false,
 seen:false
 });
 
@@ -138,7 +139,18 @@ let myUser = localStorage.getItem("chatUser");
 let isMe = d.user===myUser;
 let cls = isMe ? "mymsg" : "msg";
 
-let statusClass = d.seen ? "read" : "delivered";
+/* STATUS */
+let status="✔";
+let statusClass="";
+
+if(d.delivered){
+status="✔✔";
+statusClass="delivered";
+}
+if(d.seen){
+status="✔✔";
+statusClass="read";
+}
 
 let div=document.createElement("div");
 div.className=cls;
@@ -148,15 +160,22 @@ div.innerHTML=`
 <div class="text">${d.text}</div>
 <div class="time">
 ${time}
-${isMe ? `<span class="status ${statusClass}">${d.seen?"✔✔":"✔"}</span>`:""}
+${isMe ? `<span class="status ${statusClass}">${status}</span>`:""}
 </div>
 `;
 
 chat.prepend(div);
 
-/* mark read */
-if(!isMe){
+/* delivered */
+if(!isMe && !d.delivered){
+update(data.ref,{delivered:true});
+}
+
+/* read */
+if(!isMe && !d.seen){
+setTimeout(()=>{
 update(data.ref,{seen:true});
+},1000);
 }
 
 });
